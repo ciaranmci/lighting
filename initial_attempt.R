@@ -244,10 +244,182 @@ spssData <-
 # 3. `T_Dec3` (`T_Dec` raised to the third power)
 
 
+###### What Paul wants
+# 1. Spline the T_dec variables.
+# 2. Fixed effect the holidays and months.
+# 3. Use the DifferenceInOffset as an offset covariate, rather than one to be estimated.
 
 
 
-# glmmADMB::glmmadmb()
+###########
+## MLwiN ##
+###########
+# ----
+mod_MQL <-
+  runMLwiN(
+    # FIXED EFFECTS.
+    logit(DarknessCrime_sum, SumDarkAndDaylight) ~ 
+    DiffLfromMnBy100 +
+      DiffMSOA_MnLfromGrandMnBy100 +
+      MonthMidWk_2 +
+      MonthMidWk_3 +
+      MonthMidWk_4 +
+      MonthMidWk_5 +
+      MonthMidWk_6 +
+      MonthMidWk_7 +
+      MonthMidWk_8 +
+      MonthMidWk_9 +
+      MonthMidWk_10 +
+      MonthMidWk_11 +
+      MonthMidWk_12 +
+      NewYrWk +
+      GoodFriWk +
+      EasterWk +
+      MayDayWk +
+      SpringBankWk +
+      SummerBankWk +
+      XmasWk +
+      DifferenceInOffsets +
+      T_dec6 +
+      # LEVEL 2 RANDOM EFFECTS intercept and slopes, correlated
+      (T_Dec + T_Dec2 + T_Dec3 + T_Dec4 + T_Dec5 | 0),
+    D = "Binomial",
+    estoptions = list(
+      # DISTRIBUTION.
+      extra = TRUE),
+    data = spssData
+  )
+
+mod_PQL2 <-
+  runMLwiN(
+    # FIXED EFFECTS.
+    logit(DarknessCrime_sum, SumDarkAndDaylight) ~ 
+    DiffLfromMnBy100 +
+      DiffMSOA_MnLfromGrandMnBy100 +
+      MonthMidWk_2 +
+      MonthMidWk_3 +
+      MonthMidWk_4 +
+      MonthMidWk_5 +
+      MonthMidWk_6 +
+      MonthMidWk_7 +
+      MonthMidWk_8 +
+      MonthMidWk_9 +
+      MonthMidWk_10 +
+      MonthMidWk_11 +
+      MonthMidWk_12 +
+      NewYrWk +
+      GoodFriWk +
+      EasterWk +
+      MayDayWk +
+      SpringBankWk +
+      SummerBankWk +
+      XmasWk +
+      DifferenceInOffsets +
+      T_dec6 +
+      # LEVEL 2 RANDOM EFFECTS intercept and slopes, correlated
+      (T_Dec + T_Dec2 + T_Dec3 + T_Dec4 + T_Dec5| MSOAN112),
+    D = "Binomial",
+    estoptions = list(
+      # DISTRIBUTION.
+      extra = TRUE,
+      nonlinear = c(N = 1, M = 2),
+      startval = list(
+        FP.b = mod_MQL@FP,
+        FP.v = mod_MQL@FP.cov,
+        RP.b = mod_MQL@RP,
+        RP.v = mod_MQL@RP.cov
+      )
+    ),
+    data = spssData
+  )
+
+# R2MLwiN::runMLwiN(
+#   # OUTCOME.
+#   logit(DarknessCrime_sum, SumDarkAndDaylight) ~ 
+#     # FIXED EFFECTS.
+#     DiffLfromMnBy100 +
+#     DiffMSOA_MnLfromGrandMnBy100 +
+#     MonthMidWk_2 +
+#     MonthMidWk_3 +
+#     MonthMidWk_4 +
+#     MonthMidWk_5 +
+#     MonthMidWk_6 +
+#     MonthMidWk_7 +
+#     MonthMidWk_8 +
+#     MonthMidWk_9 +
+#     MonthMidWk_10 +
+#     MonthMidWk_11 +
+#     MonthMidWk_12 +
+#     NewYrWk +
+#     GoodFriWk +
+#     EasterWk +
+#     MayDayWk +
+#     SpringBankWk +
+#     SummerBankWk +
+#     XmasWk +
+#     DifferenceInOffsets +
+#     T_Dec6 +
+#     # LEVEL 2 RANDOM EFFECTS intercept and slopes, correlated
+#     (T_Dec + T_Dec2 + T_Dec3 + T_Dec4 + T_Dec5| MSOAN112)
+#   # DISTRIBUTION.
+#   D = "Binomial",
+#   estoptions = list(
+#                     # DISTRIBUTION.
+#                     extra = TRUE,
+#                     # ESTIMATION.
+#                     nonlinear = c(N = 1, M = 2),
+#                     startval = list(
+#                                   FP.b = mymodel4@FP,
+#                                   FP.v = mymodel4@FP.cov,
+#                                   RP.b = mymodel4@RP,
+#                                   RP.v = mymodel4@RP.cov
+#                                   )
+#                     ),
+#   data = spssData)
+
+# ----
+
+#####################
+## MASS::glmmPQL() ##
+#####################
+# ----
+mod_glmmPQL <-
+  MASS::glmmPQL(
+          fixed = cbind(DarknessCrime_sum, SumDarkAndDaylight) ~ 
+            DiffLfromMny100 +
+            DiffMSOA_MnLfromGrandMnBy100 +
+            MonthMidWk_2 +
+            MonthMidWk_3 +
+            MonthMidWk_4 +
+            MonthMidWk_5 +
+            MonthMidWk_6 +
+            MonthMidWk_7 +
+            MonthMidWk_8 +
+            MonthMidWk_9 +
+            MonthMidWk_10 +
+            MonthMidWk_11 +
+            MonthMidWk_12 +
+            NewYrWk +
+            GoodFriWk +
+            EasterWk +
+            MayDayWk +
+            SpringBankWk +
+            SummerBankWk +
+            XmasWk +
+            WithinMSOALightingTerm +
+            BetweenAreaLightingTerm +
+            offset(DifferenceInOffsets) +
+            T_dec6,
+          random = ~ T_Dec + T_Dec2 + T_Dec3 + T_Dec4 + T_Dec5 | 0,
+          family = binomial(link = "logit"),
+          data = spssData
+          )
+# ----
+
+##########################
+## glmmADMB::glmmadmb() ##
+##########################
+# ----
 # ## Just respect the nested data structure; ignore overdispersion.
 mod_ADMB_1 <- 
   glmmADMB::glmmadmb(
@@ -256,7 +428,13 @@ mod_ADMB_1 <-
     data = spssData %>% dplyr::filter(!MSOAN112 %in% c(5, 111)),
     debug = TRUE
   )
+# ----
 
+
+###################
+## lme4::glmer() ##
+###################
+## ----
 # Poisson regression with:
 # 1. Random intercept for `MSOAN112`, to respect nested data structure.
 # 2. Random intercept for `CaseID`, to account for overdispersion via OLRE.
@@ -311,59 +489,8 @@ mod_GLMR_2 <-
     family = "poisson",
     data = spssData
   )
-
-
-
-
-
-R2MLwiN::runMLwiN(
-  # OUTCOME.
-  logit(DarknessCrime_sum, SumDarkAndDaylight) ~ 
-    # FIXED EFFECTS.
-    DiffLfromMnBy100 +
-    DiffMSOA_MnLfromGrandMnBy100 +
-    MonthMidWk_2 +
-    MonthMidWk_3 +
-    MonthMidWk_4 +
-    MonthMidWk_5 +
-    MonthMidWk_6 +
-    MonthMidWk_7 +
-    MonthMidWk_8 +
-    MonthMidWk_9 +
-    MonthMidWk_10 +
-    MonthMidWk_11 +
-    MonthMidWk_12 +
-    NewYrWk +
-    GoodFriWk +
-    EasterWk +
-    MayDayWk +
-    SpringBankWk +
-    SummerBankWk +
-    XmasWk +
-    DifferenceInOffsets +
-    T_Dec4 +
-    T_Dec5 +
-    # LEVEL 2 RANDOM EFFECTS intercept and slopes, correlated
-    (T_Dec + T_Dec2 + T_Dec3| MSOAN112) +
-    # LEVEL 1 RANDOM EFFECTS intercept.
-    (1 | cons),
-  # DISTRIBUTION.
-  D = "Binomial",
-  estoptions = list(
-                    # DISTRIBUTION.
-                    extra = TRUE,
-                    # ESTIMATION.
-                    nonlinear = c(N = 1, M = 2),
-                    startval = list(
-                                  FP.b = mymodel4@FP,
-                                  FP.v = mymodel4@FP.cov,
-                                  RP.b = mymodel4@RP,
-                                  RP.v = mymodel4@RP.cov
-                                  )
-                    ),
-  data = spssData)
-
 # ----
+
 
 
 #############
@@ -371,4 +498,26 @@ R2MLwiN::runMLwiN(
 #############
 # ----
 # https://www.rdocumentation.org/packages/MuMIn/versions/1.47.5/topics/QAIC
+#
+# The follow explanation is from
+# (https://cran.r-project.org/web/packages/bbmle/vignettes/quasi.pdf).
+# Further information is available from Burnham, K. P., Anderson, D. R.
+# (2002) Model Selection and Multimodel Inference: a practical
+# information-theoretic approach. Second edition. Springer: New York.
+#
+# Formula for qAIC is qAIC = ( (-2 * logLik) / dispersion) + (2 * df)
+# where the dispersion value can be calculated from a glm model by
+# dispersion = sum(residuals(mod_glm,"pearson")^2)/mod_glm$df.residual.
+# Also, if the log-likelihood is not returned for a given model, you can
+# calculate it substractig the deviance score of the more-complicated 
+# model from the deviance score of the less-complicated model.
+#
+# For Paul's latest models, we have the following values:
+# - logLik = -8795.9
+# - dispersion = 1.21494
+# - df = 28 = 22 fixed params + 6 random params
+# 
+# This means the qAIC is:
+# qAIC = ( (-2 * -8795.9) / 1.21494) + (2 * 28)
+# qAIC = 14535.56
 # ----

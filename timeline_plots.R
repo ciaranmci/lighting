@@ -3,6 +3,44 @@
 # Poisson regression GLMs.
 
 
+
+
+### A NEW STORYLINE ###
+#
+# My new storyline is inspired by ASBATES's blogs on the use of GAMs for time
+# series.
+# I will start by using a lme4::glmer() model to fit `DarknessCrime_sum` with
+# the two lamps covariates: DiffLfromMnBy100 and DiffMSOA_MnLfromGrandMnBy100.
+# I will interpret the coefficient but note the poor fit, and then explain that
+# the subsequent models represent progressive attempts to improve fit. WE will 
+# watch the coefficient for DiffLfromMnBy100 as the models progress.
+#
+# 2. The second model will address the concern of overdispersion that is raised
+#    because the variance of the count variate is many times the mean.
+# 3. The third model will respect the data structure by including a random
+#    intercept for `MSOAN112`.
+# 4. The fourth model will check to see if a random slope for MSOAN112 also
+#    improved fit.
+# 5. The fifth model will use gamm4::gamm4() to include a joint spline for year
+#    and month to account for a creeping annual trend and seasonality. I'll need
+#    to create new variables for this. Both will have to be monotonically-increasing
+#    integer variables, over the entire study period. Note that when predicting
+#    using gamm4::gamm4(), you have to predict from the .$gam object in the list.
+# 6. The sixth model will add a binary fixed effect variable representing
+#    holidays. Unlike Paul's setup, I'll combine all binary holiday variables
+#    into one sparse variable with 1s when the crime occurred during a holiday
+#    weekend.
+#
+# At this point, the model will have accounted for overdispersion, respected the
+# nested structure of the data, smoothly accounted any possible annual creep,
+# smoothly accounted for seasonality, and will have accounted for holiday spikes.
+# The last variable to include is `DifferenceInOffsets`, which represents the 
+# changing proportion of light and dark.
+#
+# 7. The seventh model will include `DifferenceInOffsets` as a spline
+
+
+
 ###############
 # Requisites. #
 ###############
@@ -278,6 +316,8 @@ pred_GLMR_4 <-
 # ----
 
 
+
+
 ################################################################################
 # Plot 5:
 # Data structure:
@@ -423,6 +463,83 @@ pred_GLMR_6 <-
     )
 )
 # ----
+
+################################################################################
+# Plot 6:
+# Data structure:
+# - Grand mean
+# - MSOA means, i.e. random intercept for MSOA.
+# - overdispersion.
+# Covariates:
+# - Month
+# - Holidays
+# - Dark/Light difference
+# - DiffLfromMnBy100
+# - DiffMSOA_MnLfromGrandMnBy100
+#
+# The next model includes a covariates representing...
+################################################################################
+# ----
+# Make additional dataset.
+# ## Poisson regression with:
+# ## 1. Random intercept for `MSOAN112`, to respect nested data structure.
+# ## 2. Random intrecept for 'CaseID', to account for overdispersion.
+if (!exists(mod_GLMR_7))
+{
+  mod_GLMR_7 <-
+    lme4::glmer(
+      DarknessCrime_sum ~
+        1 +
+        MonthMidWk_2 +
+        MonthMidWk_3 +
+        MonthMidWk_4 +
+        MonthMidWk_5 +
+        MonthMidWk_6 +
+        MonthMidWk_7 +
+        MonthMidWk_8 +
+        MonthMidWk_9 +
+        MonthMidWk_10 +
+        MonthMidWk_11 +
+        MonthMidWk_12 +
+        NewYrWk +
+        GoodFriWk +
+        EasterWk +
+        MayDayWk +
+        SpringBankWk +
+        SummerBankWk +
+        XmasWk +
+        DifferenceInOffsets +
+        DiffLfromMnBy100 +
+        DiffMSOA_MnLfromGrandMnBy100 +
+        (1 | CaseID) +
+        (1 | MSOAN112),
+      family = "poisson",
+      data = spssData %>% dplyr::filter(!MSOAN112 %in% c(5, 111))
+    )
+}
+pred_GLMR_7 <-
+  predict(mod_GLMR_7) %>%
+  as.data.frame() %>%
+  dplyr::bind_cols(spssData %>%
+                     dplyr::select(WkNoStartFrom1, MSOAN112) %>%
+                     dplyr::filter(!MSOAN112 %in% c(5, 111))) %>%
+  dplyr::filter(MSOAN112 %in% random_selection_of_MSOAs)
+
+# Plot.
+(p7 <-
+    p_base + 
+    geom_line(data = pred_GLMR_6, aes(x = WkNoStartFrom1, y = ., group = MSOAN112)) +
+    labs(subtitle =
+           paste0('Thick black line is the MSOA-specific expected sum.\n',
+                  'Random effect: MSOA, CaseID. | Fixed effect: Month, Holidays, Dark/Light difference, Number of lamps. \n',
+                  'AIC: ', round(AIC(mod_GLMR_7)), ' (previous AIC: ', round(AIC(mod_GLMR_6)), ')',
+                  '\nBIC: ', round(BIC(mod_GLMR_7)), ' (previous BIC: ', round(BIC(mod_GLMR_6)), ')'
+           )
+    )
+)
+# ----
+
+
 
 
 # These models are just so off; such bad fits. It will not be insightful to 
